@@ -1,0 +1,93 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: schema-reg
+  name: schema-reg
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: schema-reg
+  template:
+    metadata:
+      labels:
+        app: schema-reg
+    spec:
+      containers:
+      - image: harbor.cloudgypsy.com.au/container-images/karapce #ghcr.io/aiven-open/karapace:latest
+        # command: ["python3",  "-m", "karapace"]
+        command: ["/bin/bash", "start.sh", "registry"]
+        # args: ["-c", "sleep 500"]
+        name: schema-reg
+        envFrom:
+        - configMapRef:
+            name: schema-reg-env
+        ports:
+        - containerPort: 8081
+        # - containerPort: 8082
+        resources:
+          requests: 
+            memory: 500Mi
+            cpu: 1
+          limits:
+            memory: 500Mi
+            cpu: 2
+        imagePullPolicy: IfNotPresent
+
+
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: schema-reg
+  labels:
+    app: schema-reg
+spec:
+  type: NodePort #Exposes the service as a node ports
+  ports:
+  - port: 8081
+    name: shema
+    protocol: TCP
+    targetPort: 8081
+    nodePort: 30081
+  # - port: 8082
+  #   name: rest
+  #   protocol: TCP
+  #   targetPort: 8082
+  #   nodePort: 30082
+  selector:
+    app: schema-reg
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: schema-reg-env
+  # namespace: default
+
+data:
+  KARAPACE_KARAPACE_REGISTRY: "true"
+  KARAPACE_ADVERTISED_HOSTNAME: karapace-schema-registry
+  KARAPACE_BOOTSTRAP_URI: "alpha-cent-kafka-bootstrap.kafka.svc.cluster.local:9092"
+  # kafka:29092
+  KARAPACE_PORT: "8081"
+  KARAPACE_HOST: "0.0.0.0"
+  KARAPACE_CLIENT_ID: karapace-schema-registry
+  KARAPACE_GROUP_ID: karapace-schema-registry
+  KARAPACE_MASTER_ELIGIBILITY: "true"
+  KARAPACE_TOPIC_NAME: _schemas
+  KARAPACE_LOG_LEVEL: DEBUG
+  KARAPACE_COMPATIBILITY: FULL
+  # KARAPACE_STATSD_HOST: statsd-exporter
+  # KARAPACE_STATSD_PORT: "8125"
+  KARAPACE_KAFKA_SCHEMA_READER_STRICT_MODE: "false"
+  KARAPACE_KAFKA_RETRIABLE_ERRORS_SILENCED: "true"
+  KARAPACE_TAGS__APP: karapace-schema-registry
+  # KARAPACE_TELEMETRY__OTEL_ENDPOINT_URL: http://opentelemetry-collector:4317
+  # KARAPACE_TELEMETRY__OTEL_EXPORTER: OTLP
+  # KARAPACE_TELEMETRY__RESOURCE_SERVICE_NAME: karapace-schema-registry
+  # KARAPACE_TELEMETRY__RESOURCE_SERVICE_INSTANCE_ID: sr1
+  # KARAPACE_TELEMETRY__RESOURCE_TELEMETRY_SDK_NAME: opentelemetry
+  # KARAPACE_TELEMETRY__RESOURCE_TELEMETRY_SDK_LANGUAGE: python
+  # KARAPACE_TELEMETRY__RESOURCE_TELEMETRY_SDK_VERSION: "1.27.0"

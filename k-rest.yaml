@@ -1,0 +1,81 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: schema-rest
+  name: schema-rest
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: schema-rest
+  template:
+    metadata:
+      labels:
+        app: schema-rest
+    spec:
+      containers:
+      - image: harbor.cloudgypsy.com.au/container-images/karapce #ghcr.io/aiven-open/karapace:latest
+        command: ["/bin/bash", "start.sh", "rest"]
+        name: schema-rest
+        envFrom:
+        - configMapRef:
+            name: schema-rest-env
+        ports:
+        - containerPort: 8082
+        resources:
+          requests: 
+            memory: 500Mi
+            cpu: 1
+          limits:
+            memory: 500Mi
+            cpu: 2
+        imagePullPolicy: IfNotPresent
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: schema-rest
+  labels:
+    app: schema-rest
+spec:
+  type: NodePort #Exposes the service as a node ports
+  ports:
+  - port: 8082
+    name: rest
+    protocol: TCP
+    targetPort: 8082
+    nodePort: 30082
+  # - port: 8082
+  #   name: rest
+  #   protocol: TCP
+  #   targetPort: 8082
+  #   nodePort: 30082
+  selector:
+    app: schema-rest
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: schema-rest-env
+  # namespace: default
+
+data:
+  KARAPACE_KARAPACE_REST: "true"
+  KARAPACE_PORT: "8082"
+  KARAPACE_HOST: "0.0.0.0"
+  KARAPACE_ADVERTISED_HOSTNAME: karapace-rest-proxy
+  KARAPACE_BOOTSTRAP_URI: "alpha-cent-kafka-bootstrap.kafka.svc.cluster.local:9092"
+  KARAPACE_REGISTRY_HOST: "schema-reg.kafka.svc.cluster.local"
+  KARAPACE_REGISTRY_PORT: "8081"
+  KARAPACE_ADMIN_METADATA_MAX_AGE: "0"
+  KARAPACE_LOG_LEVEL: DEBUG
+  # KARAPACE_STATSD_HOST: statsd-exporter
+  # KARAPACE_STATSD_PORT: "8125"
+  KARAPACE_KAFKA_SCHEMA_READER_STRICT_MODE: "false"
+  KARAPACE_KAFKA_RETRIABLE_ERRORS_SILENCED: "true"
+  KARAPACE_SSL_CAFILE: "/usr/local/share/ca-certificates/lab-rootCA.crt"
+  KARAPACE_SECURITY_PROTOCOL: "SSL"
+# security_protocol
+# ssl_cafile
